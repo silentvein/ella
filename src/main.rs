@@ -19,7 +19,7 @@ async fn main() {
         }
 
         if input == "stop" && is_active {
-            println!("Bye!");
+            println!("bye!");
             is_active = false;
             continue;
         }
@@ -32,10 +32,10 @@ async fn main() {
             time_rn(&input);
         } 
         else if input.contains("weather") || input.contains("погод") {
-            weather_rn().await.unwrap_or_else(|e| println!("Error: {}", e));
+            weather_rn(&input).await.unwrap_or_else(|e| println!("Error: {}", e));
         }
         else if input.contains("translate") || input.contains("перевод") || input.contains("переведи") {
-            translate_text().await.unwrap_or_else(|e| println!("Error: {}", e));
+            translate_text(&input).await.unwrap_or_else(|e| println!("Error: {}", e));
         }
         else if input.contains("music") || input.contains("музыку") {
             search_music();
@@ -85,24 +85,35 @@ fn search_music(){
     println!("Seacrh music choice");
 }
 
-async fn translate_text() -> Result<(), Box<dyn std::error::Error>> {
-    let eng_alph = "abcedghijklmnopqrstuvwxyz";
-    let rus_alph = "абвгдеёжзийклмнопрстуфхцчкшщьыъэюя";
-
-    println!("enter text to translate:");
-    let mut text = String::new();
-    io::stdin().read_line(&mut text)?;
-    let text = text.trim();
-
-    let mut target_lang = "";
-    for i in text.to_string().to_lowercase().chars(){
-        if eng_alph.contains(i){
-            target_lang = "en|ru"
-        }
-        else if rus_alph.contains(i){
-            target_lang="ru|eng"
+async fn translate_text(input: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let keywords = ["translate ", "перевод ", "переведи "];
+    let mut text = "";
+    
+    for &keyword in &keywords {
+        if let Some(start) = input.find(keyword) {
+            text = &input[start + keyword.len()..];
+            break;
         }
     }
+    
+    let text = text.trim();
+    
+    if text.is_empty() {
+        println!("Please specify text to translate");
+        return Ok(());
+    }
+
+    let has_cyrillic = text.chars().any(|c| {
+        (c >= '\u{0400}' && c <= '\u{04FF}') || 
+        (c >= '\u{0500}' && c <= '\u{052F}')
+    });
+
+    let target_lang = if has_cyrillic {
+        "ru|en" 
+    } else {
+        "en|ru"
+    };
+
     let url = format!(
         "https://api.mymemory.translated.net/get?q={}&langpair={}",
         urlencoding::encode(text), target_lang
@@ -114,22 +125,34 @@ async fn translate_text() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(translation) = data["responseData"]["translatedText"].as_str() {
         println!("Перевод: {}", translation);
     } else {
-        println!("Ошибка: {}", data);
+        println!("Ошибка перевода: {}", data);
     }
 
     Ok(())
 }
 
-async fn weather_rn() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Enter city: ");
-    let api_key = "a7daf43699508dc120b648eaabfa50ee";
-    let mut city = String::new();
-    io::stdin().read_line(&mut city).expect("Failed to read line");
-    let city = city.trim();
+async fn weather_rn(input: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let keywords = ["погода ", "weather "];
+    let mut text = "";
+    for &keyword in &keywords {
+        if let Some(start) = input.find(keyword) {
+            text = &input[start + keyword.len()..];
+            break;
+        }
+    }
 
+     let text = text.trim();
+    
+    if text.is_empty() {
+        println!("Please specify text to translate");
+        return Ok(());
+    }
+
+
+    let api_key = "a7daf43699508dc120b648eaabfa50ee";
     let url = format!(
         "https://api.openweathermap.org/data/2.5/weather?q={}&appid={}&units=metric",
-        city, api_key
+        text, api_key
     );
 
     let response = reqwest::get(&url).await?;
