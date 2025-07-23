@@ -28,7 +28,8 @@ async fn ella_menu() {
         println!("3. Search music");
         println!("4. Weather right now");
         println!("5. Open application");
-        println!("6. Exit");
+        println!("6. Translate");
+        println!("7. Exit");
 
         let mut choice = String::new();
         io::stdin().read_line(&mut choice).expect("Failed to read line");
@@ -40,7 +41,8 @@ async fn ella_menu() {
             "3" | "search music" => search_music(),
             "4" | "weather" => weather_rn().await.unwrap_or_else(|e| println!("Error: {}", e)),
             "5" | "open app" => open_application(),
-            "6" | "exit" => {
+            "6" | "translate" => translate_text().await.unwrap_or_else(|e| println!("Error: {}", e)),
+            "7" | "exit" => {
                 println!("Goodbye!");
                 break;
             }
@@ -59,6 +61,41 @@ fn show_mark(){
 
 fn search_music(){
     println!("Seacrh music choice");
+}
+
+async fn translate_text() -> Result<(), Box<dyn std::error::Error>> {
+    let eng_alph = "abcedghijklmnopqrstuvwxyz";
+    let rus_alph = "абвгдеёжзийклмнопрстуфхцчкшщьыъэюя";
+
+    println!("enter text to translate:");
+    let mut text = String::new();
+    io::stdin().read_line(&mut text)?;
+    let text = text.trim();
+
+    let mut target_lang = "";
+    for i in text.to_string().to_lowercase().chars(){
+        if eng_alph.contains(i){
+            target_lang = "en|ru"
+        }
+        else if rus_alph.contains(i){
+            target_lang="ru|eng"
+        }
+    }
+    let url = format!(
+        "https://api.mymemory.translated.net/get?q={}&langpair={}",
+        urlencoding::encode(text), target_lang
+    );
+
+    let response = reqwest::get(&url).await?;
+    let data: serde_json::Value = response.json().await?;
+
+    if let Some(translation) = data["responseData"]["translatedText"].as_str() {
+        println!("Перевод: {}", translation);
+    } else {
+        println!("Ошибка: {}", data);
+    }
+
+    Ok(())
 }
 
 async fn weather_rn() -> Result<(), Box<dyn std::error::Error>> {
