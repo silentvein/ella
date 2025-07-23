@@ -1,63 +1,85 @@
 use std::io;
 use reqwest; 
 use serde_json::Value;
+use chrono::Local;
 
 #[tokio::main]
 async fn main() {
+    let mut is_active = false; 
+
     loop {
         let mut input = String::new();
-        io::stdin().read_line(&mut input).expect("Failed to read line");
+        io::stdin().read_line(&mut input).expect("failed to read line");
         let input = input.trim().to_lowercase();
-        
-        if input == "ella" {
-            println!("hey");
-            ella_menu().await;
+
+        if input.starts_with("ella") || input.starts_with("эла") {
+            is_active = true;
+            println!("hello, friend...");
+            continue; 
         }
-        if input == "ella stop" {
-            println!("bye");
-            break;
+
+        if input == "stop" && is_active {
+            println!("Bye!");
+            is_active = false;
+            continue;
         }
-    }
-}
 
-async fn ella_menu() {
-    loop {
-        println!("\nWhat do you want:");
-        println!("1. Add mark");
-        println!("2. Show marks");
-        println!("3. Search music");
-        println!("4. Weather right now");
-        println!("5. Open application");
-        println!("6. Translate");
-        println!("7. Exit");
+        if !is_active {
+            continue;
+        }
 
-        let mut choice = String::new();
-        io::stdin().read_line(&mut choice).expect("Failed to read line");
-        let choice = choice.trim().to_lowercase();
-
-        match choice.as_str() {
-            "1" | "add mark" => add_mark(),
-            "2" | "show marks" => show_mark(),
-            "3" | "search music" => search_music(),
-            "4" | "weather" => weather_rn().await.unwrap_or_else(|e| println!("Error: {}", e)),
-            "5" | "open app" => open_application(),
-            "6" | "translate" => translate_text().await.unwrap_or_else(|e| println!("Error: {}", e)),
-            "7" | "exit" => {
-                println!("Goodbye!");
-                break;
-            }
-            _ => println!("Invalid option, please try again"),
+        if input.contains("time") || input.contains("время") || input.contains("date") || input.contains("дату") {
+            time_rn(&input);
+        } 
+        else if input.contains("weather") || input.contains("погод") {
+            weather_rn().await.unwrap_or_else(|e| println!("Error: {}", e));
+        }
+        else if input.contains("translate") || input.contains("перевод") || input.contains("переведи") {
+            translate_text().await.unwrap_or_else(|e| println!("Error: {}", e));
+        }
+        else if input.contains("music") || input.contains("музыку") {
+            search_music();
+        }
+        else {
+            println!("unknown command");
         }
     }
 }
 
-fn add_mark(){
-    println!("Add mark choice");
+fn time_rn(request: &str) {
+    let now = Local::now();
+    let request_lower = request.to_lowercase();
+
+    let wants_date = request_lower.contains("дату") || request_lower.contains("дата") || request_lower.contains("date");
+    let wants_time = request_lower.contains("время") || request_lower.contains("времени") || request_lower.contains("time");
+
+    match (wants_date, wants_time) {
+        (true, true) => {
+            println!(
+                "Дата: {}\nВремя: {}",
+                now.format("%d.%m.%Y"),
+                now.format("%H:%M:%S")
+            );
+        }
+        (true, false) => {
+            println!("Сегодня: {}", now.format("%d.%m.%Y"));
+        }
+        (false, true) => {
+            println!("Сейчас: {}", now.format("%H:%M:%S"));
+        }
+        _ => {
+            println!("unknown command");
+        }
+    }
 }
 
-fn show_mark(){
-    println!("Show mark choice");
-}
+// fn add_mark(){
+//     println!("Add mark choice");
+// }
+
+// fn show_mark(){
+//     println!("Show mark choice");
+// }
 
 fn search_music(){
     println!("Seacrh music choice");
@@ -122,6 +144,6 @@ async fn weather_rn() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn open_application(){
-    println!("Open application right now");
-}
+// fn open_application(){
+//     println!("Open application right now");
+// }
